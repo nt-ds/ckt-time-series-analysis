@@ -12,8 +12,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import statsmodels.api as smapi
+import statsmodels.graphics.tsaplots as tsaplots
 import statsmodels.tsa as tsa
 import warnings
+
+from pylab import rcParams
 
 sns.set_style("whitegrid")
 warnings.filterwarnings("ignore")
@@ -49,35 +52,69 @@ class Stats():
         result = tsa.stattools.adfuller(data.values.reshape(-1,), **def_args)
         print('ADF Statistic: %f' % result[0])
         print('p-value:       %f' % result[1])
+        print('Critical Values:')
         for key, value in result[4].items():
             print('\t%s: %.3f' % (key, value))
-    
-    
-    @staticmethod
-    def compute_acf(data,*args,**kwargs):
-        # return the sample autocorrelation function
-        # by default return the confidence intervals
-    
-        def_args = {}
-        def_args['unbiased']=kwargs.get('unbiased',False)
-        def_args['nlags']=kwargs.get('nlags',36)
-        def_args['qstat']=kwargs.get('qstat',False)
-        def_args['alpha']=kwargs.get('alpha',0.05)
+        print('Used Lag:      %f' % result[2])
         
-        results = tsa.stattools.acf(data,**def_args)
-        return results
-    
-    @staticmethod
-    def compute_pacf(data,*args,**kwargs):
-        # return the sample autocorrelation function
-        # by default return the confidence intervals
-        def_args = {}
-        def_args['nlags']=kwargs.get('nlags',36)
-        def_args['method']=kwargs.get('method','ywunbiased')
-        def_args['alpha']=kwargs.get('alpha',0.05)
         
-        results = tsa.stattools.pacf(data,**def_args)
-        return results
+    @staticmethod
+    def seasonal_decompose(data, *args, **kwargs):
+        # return a naive seasonal decomposition using moving averages
+        
+        def_args = {}
+        def_args['model'] = kwargs.get('model', 'additive')
+        def_args['filt'] = kwargs.get('filt', None)
+        def_args['freq'] = kwargs.get('freq', None)
+        def_args['two_sided'] = kwargs.get('two_sided', True)
+        def_args['extrapolate_trend'] = kwargs.get('extrapolate_trend', 0)
+        
+        result = tsa.seasonal.seasonal_decompose(data, **def_args)
+        rcParams['figure.figsize'] = 20, 10
+        result.plot()
+        plt.show()
+        
+        
+    @staticmethod
+    def plot_acf(data, *args, **kwargs):
+        # plot the autocorrelation function
+        # lags on the horizontal axis
+        # the correlations on the vertical axis
+        
+        def_args = {}
+        def_args['ax'] = kwargs.get('ax', None)
+        def_args['lags'] = kwargs.get('lags', None)
+        def_args['alpha'] = kwargs.get('alpha', 0.05)
+        def_args['use_vlines'] = kwargs.get('use_vlines', True)
+        def_args['unbiased'] = kwargs.get('unbiased', False)
+        def_args['fft'] = kwargs.get('fft', False)
+        def_args['title'] = kwargs.get('title', 'Autocorrelation')
+        def_args['zero'] = kwargs.get('zero', True)
+        def_args['vlines_kwargs'] = kwargs.get('vlines_kwargs', None)
+        
+        tsaplots.plot_acf(data, **def_args)
+        plt.show()
+        
+        
+    @staticmethod
+    def plot_pacf(data, *args, **kwargs):
+        # plot the partial autocorrelation function
+        # lags on the horizontal axis
+        # the correlations on the vertical axis
+        
+        def_args = {}
+        def_args['ax'] = kwargs.get('ax', None)
+        def_args['lags'] = kwargs.get('lags', None)
+        def_args['alpha'] = kwargs.get('alpha', 0.05)
+        def_args['method'] = kwargs.get('method', 'ywunbiased')
+        def_args['use_vlines'] = kwargs.get('use_vlines', True)
+        def_args['title'] = kwargs.get('title', 'Partial Autocorrelation')
+        def_args['zero'] = kwargs.get('zero', True)
+        def_args['vlines_kwargs'] = kwargs.get('vlines_kwargs', None)
+        
+        tsaplots.plot_pacf(data, **def_args)
+        plt.show()
+    
     
     @staticmethod
     def AR_model(data,*args,**kwargs):
