@@ -28,6 +28,14 @@ warnings.filterwarnings("ignore")
 class Stats():
     
     @staticmethod
+    def plot_time_series(data, title):
+        plt.figure(figsize=(20, 10))
+        plt.plot(data)
+        plt.title(title)
+        plt.show()
+    
+    
+    @staticmethod
     def demean(data, *args, **kwargs):
         dem_data = data.subtract(data.mean())
         return dem_data
