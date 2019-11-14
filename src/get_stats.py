@@ -63,7 +63,7 @@ class Stats():
         print('Critical Values:')
         for key, value in result[4].items():
             print('\t%s: %.3f' % (key, value))
-        print('Used Lag:      %f' % result[2])
+        print('Used Lag:      %d' % result[2])
         
         
     @staticmethod
