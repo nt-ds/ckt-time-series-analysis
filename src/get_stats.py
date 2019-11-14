@@ -9,6 +9,7 @@
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import statsmodels.api as smapi
@@ -17,6 +18,7 @@ import statsmodels.tsa as tsa
 import warnings
 
 from pylab import rcParams
+from sklearn.metrics import mean_squared_error
 
 sns.set_style("whitegrid")
 warnings.filterwarnings("ignore")
@@ -125,14 +127,30 @@ class Stats():
     
     
     @staticmethod
-    def AR_model(data,*args,**kwargs):
-        def_args = {}
-        def_args['dates'] = kwargs.get('dates',None)
-        def_args['freq'] = kwargs.get('freq',None)
-        def_args['missing'] = kwargs.get('missing',None)
-        model= tsa.ar_model.AR(data.values.reshape(-1,),**def_args)
-        return model
-                
+    def AR_model(data, *args, **kwargs):
+        train, test = data[:len(data)-6], data[len(data)-6:]
+        
+        def_args_model = {}
+        def_args_model['dates'] = kwargs.get('dates', None)
+        def_args_model['freq'] = kwargs.get('freq', None)
+        def_args_model['missing'] = kwargs.get('missing', None)
+        model = tsa.ar_model.AR(train, **def_args_model)
+        
+        def_args_fit = {}
+        def_args_fit['ic'] = kwargs.get('ic', 'aic')
+        model_fit = model.fit(**def_args_fit)
+        
+        predictions = model_fit.predict(start=len(train), end=len(train)+len(test)-1, dynamic=False)
+        error = mean_squared_error(test, predictions)
+        
+        plt.figure(figsize=(20, 10))
+        plt.plot(test, label='Expected')
+        plt.plot(predictions, color='red', label='Predicted')
+        plt.title(f'AR({model_fit.k_ar+1}); Six-Month Forecast; RMSE = %.3f' % np.sqrt(error))
+        plt.legend(loc='best')
+        plt.show()
+    
+    
     @staticmethod
     def ARMA_model(data,maxp=3,maxq=3,*args,**kwargs):
         plags=range(maxp+1)
