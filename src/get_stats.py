@@ -137,7 +137,9 @@ class Stats():
         model = tsa.ar_model.AR(train, **def_args_model)
         
         def_args_fit = {}
+        def_args_fit['maxlag'] = kwargs.get('maxlag', None)
         def_args_fit['ic'] = kwargs.get('ic', 'aic')
+        def_args_fit['trend'] = kwargs.get('trend', 'nc')
         model_fit = model.fit(**def_args_fit)
         
         predictions = model_fit.predict(start=len(train), end=len(train)+len(test)-1, dynamic=False)
@@ -152,7 +154,7 @@ class Stats():
     
     
     @staticmethod
-    def ARMA_model(data,maxp=3,maxq=3,*args,**kwargs):
+    def ARMA_model(data, maxp=3, maxq=3, *args, **kwargs):
         plags=range(maxp+1)
         qlags=range(maxq+1)
         p_q = [(x,y) for x in plags for y in qlags]
