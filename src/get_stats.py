@@ -163,7 +163,6 @@ class Stats():
         plags = range(maxp+1)
         qlags = range(maxq+1)
         p_q = [(x, y) for x in plags for y in qlags]
-        p_q = p_q[1:]
         all_models = {'ARMA({0},{1})'.format(x[0], x[1]): tsa.arima_model.ARMA(train, x) for x in p_q}
         
         models = []
@@ -171,12 +170,15 @@ class Stats():
         errors = []
         
         for model in all_models:
-            models.append(model)
-            model_fit = all_models[model].fit(**def_args_fit)
-            predictions = model_fit.predict(start=len(train), end=len(train)+len(test)-1, dynamic=False)
-            preds.append(predictions)
-            error = mean_squared_error(test, predictions)
-            errors.append(np.sqrt(error))
+            try:
+                model_fit = all_models[model].fit(**def_args_fit)
+                predictions = model_fit.predict(start=len(train), end=len(train)+len(test)-1, dynamic=False)
+                models.append(model)
+                preds.append(predictions)
+                error = mean_squared_error(test, predictions)
+                errors.append(np.sqrt(error))
+            except:
+                pass
             
         df = pd.DataFrame(zip(models, errors), columns=['ARMA(p,q) Model', 'RMSE'])
         print(df)
@@ -192,14 +194,46 @@ class Stats():
     
     
     @staticmethod
-    def ARIMA_model(data,maxp=3,maxq=3,maxd=1,*args,**kwargs):
-        plags=range(maxp+1)
-        dlags=range(maxd+1)
-        qlags=range(maxq+1)
-        p_d_q = [(x,z,y) for x in plags for z in dlags for y in qlags]
-        all_models = {'ARIMA({0},{1},{2})'.format(x[0],x[1],x[2]):tsa.arima_model.ARIMA(endog=data,order=x,) for x in p_d_q}
-        return all_models
+    def ARIMA_model(data, maxp=3, maxq=3, maxd=1, *args, **kwargs):
+        train, test = data[:len(data)-6], data[len(data)-6:]
         
+        def_args_fit = {}
+        def_args_fit['trend'] = kwargs.get('trend', 'nc')
+        
+        plags = range(maxp+1)
+        dlags = range(maxd+1)
+        qlags = range(maxq+1)
+        p_d_q = [(x,z,y) for x in plags for z in dlags for y in qlags]
+        all_models = {'ARIMA({0},{1},{2})'.format(x[0], x[1], x[2]): tsa.arima_model.ARIMA(train, x) for x in p_d_q}
+        
+        models = []
+        preds = []
+        errors = []
+        
+        for model in all_models:
+            try:
+                model_fit = all_models[model].fit(**def_args_fit)
+                predictions = model_fit.predict(start=len(train), end=len(train)+len(test)-1, dynamic=False)
+                models.append(model)
+                preds.append(predictions)
+                error = mean_squared_error(test, predictions)
+                errors.append(np.sqrt(error))
+            except:
+                pass
+            
+        df = pd.DataFrame(zip(models, errors), columns=['ARIMA(p,d,q) Model', 'RMSE'])
+        print(df)
+        
+        opt_idx = df[df.RMSE==df.RMSE.min()].index.tolist()
+        plt.figure(figsize=(20, 10))
+        plt.plot(test, label='Expected')
+        plt.plot(preds[opt_idx[0]], color='red', label='Predicted')
+        model_name = df['ARIMA(p,d,q) Model'][opt_idx[0]]
+        plt.title(f'{model_name}; Six-Month Forecast; RMSE = %.3f' % df.RMSE.min())
+        plt.legend(loc='best')
+        plt.show()
+    
+    
     @staticmethod
     def SARIMA_model(data,maxp=3,maxq=3,maxd=1,maxP=0,maxD=0,maxQ=0,maxs=0,*args,**kwargs):
         plags=range(maxp+1)
@@ -216,7 +250,4 @@ class Stats():
         all_models = {'SARIMA(({0},{1},{2})X({3},{4},{5},{6})'.format(x[0],x[1],x[2]):tsa.arima_model.SARIMAX(data,None,
                                                                                                               order=x,seasonal_order=y) 
                       for x in p_d_q for y in P_D_Q_s}
-
-        
-    
 
