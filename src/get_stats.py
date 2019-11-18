@@ -148,7 +148,7 @@ class Stats():
         plt.figure(figsize=(20, 10))
         plt.plot(test, label='Expected')
         plt.plot(predictions, color='red', label='Predicted')
-        plt.title(f'AR({model_fit.k_ar}); Six-Month Forecast; RMSE = %.3f; AIC = %.3f' % (np.sqrt(error), model_fit.aic))
+        plt.title(f'AR({model_fit.k_ar}); 24 One-Month Forecasts; RMSE = %.3f; AIC = %.3f' % (np.sqrt(error), model_fit.aic))
         plt.legend(loc='best')
         plt.show()
     
@@ -191,9 +191,12 @@ class Stats():
         plt.plot(test, label='Expected')
         plt.plot(preds[opt_idx[0]], color='red', label='Predicted')
         model_name = df['ARMA(p,q) Model'][opt_idx[0]]
-        plt.title(f'{model_name}; Six-Month Forecast; RMSE = %.3f; AIC = %.3f' % (df['RMSE'][opt_idx[0]], df.AIC.min()))
+        plt.title(f'{model_name}; 24 One-Month Forecasts; RMSE = %.3f; AIC = %.3f' % (df['RMSE'][opt_idx[0]], df.AIC.min()))
         plt.legend(loc='best')
         plt.show()
+        
+        opt_idx_rmse = df[df.RMSE==df.RMSE.min()].index.tolist()
+        print('Optimal model based on RMSE is:' + df['ARMA(p,q) Model'][opt_idx_rmse[0]] + '; RMSE = %.3f; AIC = %.3f' % (df.RMSE.min(), df['AIC'][opt_idx_rmse[0]]))
     
     
     @staticmethod
@@ -235,9 +238,12 @@ class Stats():
         plt.plot(test, label='Expected')
         plt.plot(preds[opt_idx[0]], color='red', label='Predicted')
         model_name = df['ARIMA(p,d,q) Model'][opt_idx[0]]
-        plt.title(f'{model_name}; Six-Month Forecast; RMSE = %.3f; AIC = %.3f' % (df['RMSE'][opt_idx[0]], df.AIC.min()))
+        plt.title(f'{model_name}; 24 One-Month Forecasts; RMSE = %.3f; AIC = %.3f' % (df['RMSE'][opt_idx[0]], df.AIC.min()))
         plt.legend(loc='best')
         plt.show()
+        
+        opt_idx_rmse = df[df.RMSE==df.RMSE.min()].index.tolist()
+        print('Optimal model based on RMSE is:' + df['ARIMA(p,d,q) Model'][opt_idx_rmse[0]] + '; RMSE = %.3f; AIC = %.3f' % (df.RMSE.min(), df['AIC'][opt_idx_rmse[0]]))
     
     
     @staticmethod
@@ -257,14 +263,44 @@ class Stats():
         Qlags = range(maxQ+1)
         slags = range(maxs+1)
         P_D_Q_s = [(a, b, c, d) for a in Plags for b in Dlags for c in Qlags for d in slags]
-
-        #         order=(1, 0, 0), seasonal_order=(0, 0, 0, 0)
-
         
         combs = [(x, y) for x in p_d_q for y in P_D_Q_s]
         
-        all_models = {'SARIMA(({0},{1},{2})X({3},{4},{5},{6})'.format(x[0],x[1],x[2]): tsa.statespace.sarimax.SARIMAX(endog=train,
-                                                                                                                      order=x,
-                                                                                                                      seasonal_order=y) 
-                      for x in p_d_q for y in P_D_Q_s}
+        all_models = {'SARIMA{0}{1}[{2}]'.format(comb[0], comb[1][:-1], comb[1][-1]): tsa.statespace.sarimax.SARIMAX(endog=train,
+                                                                                                                     order=comb[0],
+                                                                                                                     seasonal_order=comb[1]) 
+                      for comb in combs}
+        
+        models = []
+        preds = []
+        errors = []
+        aics = []
+        
+        for model in all_models:
+            try:
+                model_fit = all_models[model].fit(**def_args_fit)
+                aic = model_fit.aic
+                predictions = model_fit.predict(start=len(train), end=len(train)+len(test)-1, dynamic=False)
+                aics.append(aic)
+                models.append(model)
+                preds.append(predictions)
+                error = mean_squared_error(test, predictions)
+                errors.append(np.sqrt(error))
+            except:
+                pass
+            
+        df = pd.DataFrame(zip(models, aics, errors), columns=['SARIMA(p,d,q)(P,D,Q)[s] Model', 'AIC', 'RMSE'])
+        print(df)
+        
+        opt_idx = df[df.AIC==df.AIC.min()].index.tolist()
+        plt.figure(figsize=(20, 10))
+        plt.plot(test, label='Expected')
+        plt.plot(preds[opt_idx[0]], color='red', label='Predicted')
+        model_name = df['SARIMA(p,d,q)(P,D,Q)[s] Model'][opt_idx[0]]
+        plt.title(f'{model_name}; 24 One-Month Forecasts; RMSE = %.3f; AIC = %.3f' % (df['RMSE'][opt_idx[0]], df.AIC.min()))
+        plt.legend(loc='best')
+        plt.show()
+        
+        opt_idx_rmse = df[df.RMSE==df.RMSE.min()].index.tolist()
+        print('Optimal model based on RMSE is:' + df['SARIMA(p,d,q)(P,D,Q)[s] Model'][opt_idx_rmse[0]] + '; RMSE = %.3f; AIC = %.3f' % (df.RMSE.min(), df['AIC'][opt_idx_rmse[0]]))
 
