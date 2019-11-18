@@ -148,7 +148,7 @@ class Stats():
         plt.figure(figsize=(20, 10))
         plt.plot(test, label='Expected')
         plt.plot(predictions, color='red', label='Predicted')
-        plt.title(f'AR({model_fit.k_ar+1}); Six-Month Forecast; RMSE = %.3f' % np.sqrt(error))
+        plt.title(f'AR({model_fit.k_ar}); Six-Month Forecast; RMSE = %.3f' % np.sqrt(error))
         plt.legend(loc='best')
         plt.show()
     
@@ -168,11 +168,13 @@ class Stats():
         models = []
         preds = []
         errors = []
+        aics = []
         
         for model in all_models:
             try:
                 model_fit = all_models[model].fit(**def_args_fit)
                 predictions = model_fit.predict(start=len(train), end=len(train)+len(test)-1, dynamic=False)
+                aics.append(model_fit.aic)
                 models.append(model)
                 preds.append(predictions)
                 error = mean_squared_error(test, predictions)
@@ -180,15 +182,15 @@ class Stats():
             except:
                 pass
             
-        df = pd.DataFrame(zip(models, errors), columns=['ARMA(p,q) Model', 'RMSE'])
+        df = pd.DataFrame(zip(models, aics, errors), columns=['ARMA(p,q) Model', 'AIC', 'RMSE'])
         print(df)
         
-        opt_idx = df[df.RMSE==df.RMSE.min()].index.tolist()
+        opt_idx = df[df.RMSE==df.AIC.min()].index.tolist()
         plt.figure(figsize=(20, 10))
         plt.plot(test, label='Expected')
         plt.plot(preds[opt_idx[0]], color='red', label='Predicted')
         model_name = df['ARMA(p,q) Model'][opt_idx[0]]
-        plt.title(f'{model_name}; Six-Month Forecast; RMSE = %.3f' % df.RMSE.min())
+        plt.title(f'{model_name}; Six-Month Forecast; RMSE = %.3f' % df['RMSE'][opt_idx[0]])
         plt.legend(loc='best')
         plt.show()
     
@@ -209,11 +211,13 @@ class Stats():
         models = []
         preds = []
         errors = []
+        aics = []
         
         for model in all_models:
             try:
                 model_fit = all_models[model].fit(**def_args_fit)
                 predictions = model_fit.predict(start=len(train), end=len(train)+len(test)-1, dynamic=False)
+                aics.append(model_fit.aic)
                 models.append(model)
                 preds.append(predictions)
                 error = mean_squared_error(test, predictions)
@@ -221,15 +225,15 @@ class Stats():
             except:
                 pass
             
-        df = pd.DataFrame(zip(models, errors), columns=['ARIMA(p,d,q) Model', 'RMSE'])
+        df = pd.DataFrame(zip(models, aics, errors), columns=['ARIMA(p,d,q) Model', 'AIC', 'RMSE'])
         print(df)
         
-        opt_idx = df[df.RMSE==df.RMSE.min()].index.tolist()
+        opt_idx = df[df.RMSE==df.AIC.min()].index.tolist()
         plt.figure(figsize=(20, 10))
         plt.plot(test, label='Expected')
         plt.plot(preds[opt_idx[0]], color='red', label='Predicted')
         model_name = df['ARIMA(p,d,q) Model'][opt_idx[0]]
-        plt.title(f'{model_name}; Six-Month Forecast; RMSE = %.3f' % df.RMSE.min())
+        plt.title(f'{model_name}; Six-Month Forecast; RMSE = %.3f' % df['RMSE'][opt_idx[0]])
         plt.legend(loc='best')
         plt.show()
     
