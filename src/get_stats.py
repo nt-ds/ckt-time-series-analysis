@@ -148,7 +148,7 @@ class Stats():
         plt.figure(figsize=(20, 10))
         plt.plot(test, label='Expected')
         plt.plot(predictions, color='red', label='Predicted')
-        plt.title(f'AR({model_fit.k_ar}); Six-Month Forecast; RMSE = %.3f; AIC = %.3f' % (np.sqrt(error), model_fit.AIC))
+        plt.title(f'AR({model_fit.k_ar}); Six-Month Forecast; RMSE = %.3f; AIC = %.3f' % (np.sqrt(error), model_fit.aic))
         plt.legend(loc='best')
         plt.show()
     
