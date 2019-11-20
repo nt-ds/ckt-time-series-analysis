@@ -71,7 +71,7 @@ class Stats():
 #             print('\t%s: %.3f' % (key, value))
 #         print('Used Lag:      %d' % result[2])
         
-        ad_results = {'ADF Statistic': result[0], 'p-value': result[1], 'Used Lag': int(result[-1].usedlag+1)}
+        ad_results = {'ADF Statistic': result[0], 'p-value': result[1], 'Used Lag': result[-1].usedlag+1}
         ad_results.update(result[2])
         return pd.Series(ad_results)
     
@@ -142,7 +142,7 @@ class Stats():
     
     @staticmethod
     def AR_model(data, *args, **kwargs):
-        train, test = train_test_split(data)
+        train, test = Stats.train_test_split(data)
         
         def_args_model = {}
         def_args_model['dates'] = kwargs.get('dates', None)
@@ -169,7 +169,7 @@ class Stats():
     
     @staticmethod
     def ARMA_model(data, maxp=3, maxq=3, *args, **kwargs):
-        train, test = train_test_split(data)
+        train, test = Stats.train_test_split(data)
         
         def_args_fit = {}
         def_args_fit['trend'] = kwargs.get('trend', 'nc')
@@ -224,7 +224,7 @@ class Stats():
     
     @staticmethod
     def ARIMA_model(data, maxp=3, maxq=3, maxd=1, *args, **kwargs):
-        train, test = train_test_split(data)
+        train, test = Stats.train_test_split(data)
         
         def_args_fit = {}
         def_args_fit['trend'] = kwargs.get('trend', 'nc')
@@ -280,7 +280,7 @@ class Stats():
     
     @staticmethod
     def SARIMA_model(data, maxp=3, maxd=1, maxq=3, maxP=0, maxD=0, maxQ=0, maxs=[3, 6, 9, 12], *args, **kwargs):
-        train, test = train_test_split(data)
+        train, test = Stats.train_test_split(data)
         
         plags = range(maxp+1)
         dlags = range(maxd+1)
