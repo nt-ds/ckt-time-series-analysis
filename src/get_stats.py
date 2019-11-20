@@ -71,7 +71,7 @@ class Stats():
 #             print('\t%s: %.3f' % (key, value))
 #         print('Used Lag:      %d' % result[2])
         
-        ad_results = {'ADF Statistic': result[0], 'p-value': result[1], 'Used Lag': int(results[-1].usedlag+1)}
+        ad_results = {'ADF Statistic': result[0], 'p-value': result[1], 'Used Lag': int(result[-1].usedlag+1)}
         ad_results.update(result[2])
         return pd.Series(ad_results)
     
