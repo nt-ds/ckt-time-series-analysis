@@ -4,8 +4,6 @@
 # In[1]:
 
 
-# imports
-
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 import matplotlib.pyplot as plt
@@ -15,8 +13,10 @@ import seaborn as sns
 import statsmodels.api as smapi
 import statsmodels.graphics.tsaplots as tsaplots
 import statsmodels.tsa as tsa
+
 import warnings
 
+from ast import literal_eval
 from pylab import rcParams
 from sklearn.metrics import mean_squared_error
 
@@ -31,6 +31,11 @@ class Stats():
     
     @staticmethod
     def plot_time_series(data, title):
+        
+        '''
+        plots time series
+        '''
+        
         plt.figure(figsize=(20, 10))
         plt.plot(data)
         plt.title(title)
@@ -39,18 +44,25 @@ class Stats():
     
     @staticmethod
     def demean(data, *args, **kwargs):
+        
+        '''
+        demeans time series
+        '''
+        
         dem_data = data.subtract(data.mean())
         return dem_data
     
     
     @staticmethod
     def adfuller(data, *args, **kwargs):
-        # method to run augmented dickey-fuller test for unit-root
-        # if we can reject the null hypothesis, our series is probably (weakly) stationary
-        # the default is that the series is to run with a constant (i.e. non-zero mean)
-        # but we can demean the series first
-        # we can put a max-lag after the fact
-        # note that lag convention is pythonic i.e. lag=0 means an AR(1)
+        
+        """
+        Augmented Dickey-Fuller test for unit-root
+            (reject the null hypothesis -> time series is probably (weakly) stationary)
+            default: time series is to run with a constant (i.e. having non-zero mean)
+        
+        note: lag convention is pythonic (i.e. lag=0 means an AR(1))
+        """
         
         def_args = {}
         def_args['maxlag'] = kwargs.get('maxlag', None)
@@ -62,15 +74,7 @@ class Stats():
         def_args['store'] = kwargs.get('store', False)
         def_args['regresults'] = kwargs.get('regresults', True)
         
-        result = tsa.stattools.adfuller(data.values.reshape(-1,), **def_args)
-        
-#         print('ADF Statistic: %f' % result[0])
-#         print('p-value:       %f' % result[1])
-#         print('Critical Values:')
-#         for key, value in result[4].items():
-#             print('\t%s: %.3f' % (key, value))
-#         print('Used Lag:      %d' % result[2])
-        
+        result = tsa.stattools.adfuller(data.values.reshape(-1,), **def_args)        
         ad_results = {'ADF Statistic': result[0], 'p-value': result[1], 'Used Lag': result[-1].usedlag+1}
         ad_results.update(result[2])
         return pd.Series(ad_results)
@@ -78,7 +82,10 @@ class Stats():
     
     @staticmethod
     def seasonal_decompose(data, *args, **kwargs):
-        # return a naive seasonal decomposition using moving averages
+        
+        '''
+        returns a naive seasonal decomposition using moving averages
+        '''
         
         def_args = {}
         def_args['model'] = kwargs.get('model', 'additive')
@@ -95,10 +102,13 @@ class Stats():
         
     @staticmethod
     def plot_acf(data, *args, **kwargs):
-        # plot the autocorrelation function
-        # lags on the horizontal axis
-        # the correlations on the vertical axis
         
+        '''
+        plots the autocorrelation function
+            lags on the horizontal axis
+            the correlations on the vertical axis
+        '''
+                
         def_args = {}
         def_args['ax'] = kwargs.get('ax', None)
         def_args['lags'] = kwargs.get('lags', None)
@@ -116,9 +126,12 @@ class Stats():
         
     @staticmethod
     def plot_pacf(data, *args, **kwargs):
-        # plot the partial autocorrelation function
-        # lags on the horizontal axis
-        # the correlations on the vertical axis
+        
+        '''
+        plots the partial autocorrelation function
+            lags on the horizontal axis
+            the correlations on the vertical axis
+        '''
         
         def_args = {}
         def_args['ax'] = kwargs.get('ax', None)
@@ -136,12 +149,23 @@ class Stats():
     
     @staticmethod
     def train_test_split(data):
-        train, test = data[:len(data)-33], data[len(data)-33:]
+        
+        '''
+        performs a train test split
+            the last 24 months are used in the test set
+        '''
+        
+        train, test = data[:len(data)-24], data[len(data)-24:]
         return train, test
     
     
     @staticmethod
     def AR_model(data, *args, **kwargs):
+        
+        '''
+        builds AR model
+        '''
+        
         train, test = Stats.train_test_split(data)
         
         def_args_model = {}
@@ -162,13 +186,54 @@ class Stats():
         plt.figure(figsize=(20, 10))
         plt.plot(test, label='Expected')
         plt.plot(predictions, color='red', label='Predicted')
-        plt.title(f'AR({model_fit.k_ar}); 33-Month Forecast; RMSE = %.3f; AIC = %.3f' % (np.sqrt(error), model_fit.aic))
+        p = model_fit.k_ar
+        plt.title(f'AR({p}); 24-Month Forecast; RMSE = %.3f; AIC = %.3f' % (np.sqrt(error), model_fit.aic))
         plt.legend(loc='best')
         plt.show()
+        
+        os_model = tsa.ar_model.AR(data, **def_args_model)
+        is_params = model_fit.params
+        predictions_1_step, error_1_step = Stats.one_step_predictor(os_model, is_params, train, test, f'AR({p})')
+        return predictions, error, predictions_1_step, error_1_step
+    
+    
+    @staticmethod
+    def one_step_predictor(os_model, is_params, train, test, model_name, i_bool=False):
+        
+        '''
+        builds 1-step predictor
+        '''
+        
+        os_model.fit(ic='aic', trend='nc', maxlag=None)
+        if i_bool:
+            predictions = pd.Series(index=test.index, data=os_model.predict(is_params,
+                                                                            start=len(train),
+                                                                            end=len(train)+len(test)-1,
+                                                                            typ='levels',
+                                                                            dynamic=False))
+        else:
+            predictions = pd.Series(index=test.index, data=os_model.predict(is_params,
+                                                                            start=len(train),
+                                                                            end=len(train)+len(test)-1,
+                                                                            dynamic=False))
+        error = mean_squared_error(test, predictions)
+        
+        plt.figure(figsize=(20, 10))
+        plt.plot(test, label='Expected')
+        plt.plot(predictions, color='red', label='Predicted')
+        plt.title(f'{model_name}; 24 1-Month Forecasts; RMSE = %.3f' % np.sqrt(error))
+        plt.legend(loc='best')
+        plt.show()
+        return predictions, error
     
     
     @staticmethod
     def ARMA_model(data, maxp=3, maxq=3, *args, **kwargs):
+        
+        '''
+        builds ARMA models
+        '''
+        
         train, test = Stats.train_test_split(data)
         
         def_args_fit = {}
@@ -198,7 +263,6 @@ class Stats():
                 pass
             
         df = pd.DataFrame(zip(models, aics, errors), columns=['ARMA(p,q) Model', 'AIC', 'RMSE'])
-#         print(df)
         
         opt_idx = df[df.AIC==df.AIC.min()].index.tolist()
         print('Optimal model based on AIC is:')
@@ -206,9 +270,15 @@ class Stats():
         plt.plot(test, label='Expected')
         plt.plot(preds[opt_idx[0]], color='red', label='Predicted')
         model_name = df['ARMA(p,q) Model'][opt_idx[0]]
-        plt.title(f'{model_name}; 33-Month Forecast; RMSE = %.3f; AIC = %.3f' % (df['RMSE'][opt_idx[0]], df.AIC.min()))
+        plt.title(f'{model_name}; 24-Month Forecast; RMSE = %.3f; AIC = %.3f' % (df['RMSE'][opt_idx[0]], df.AIC.min()))
         plt.legend(loc='best')
         plt.show()
+        
+        os_model = tsa.arima_model.ARMA(data, literal_eval(model_name[model_name.find("("):]))
+        is_model = tsa.arima_model.ARMA(train, literal_eval(model_name[model_name.find("("):]))
+        is_params = is_model.fit(**def_args_fit).params
+        aic_predictions_1_step, aic_error_1_step = Stats.one_step_predictor(os_model, is_params, train, test, f'{model_name}')
+        
         print()
         
         opt_idx_rmse = df[df.RMSE==df.RMSE.min()].index.tolist()
@@ -217,13 +287,24 @@ class Stats():
         plt.plot(test, label='Expected')
         plt.plot(preds[opt_idx_rmse[0]], color='red', label='Predicted')
         model_name = df['ARMA(p,q) Model'][opt_idx_rmse[0]]
-        plt.title(f'{model_name}; 33-Month Forecast; RMSE = %.3f; AIC = %.3f' % (df.RMSE.min(), df['AIC'][opt_idx_rmse[0]]))
+        plt.title(f'{model_name}; 24-Month Forecast; RMSE = %.3f; AIC = %.3f' % (df.RMSE.min(), df['AIC'][opt_idx_rmse[0]]))
         plt.legend(loc='best')
         plt.show()
+        
+        os_model = tsa.arima_model.ARMA(data, literal_eval(model_name[model_name.find("("):]))
+        is_model = tsa.arima_model.ARMA(train, literal_eval(model_name[model_name.find("("):]))
+        is_params = is_model.fit(**def_args_fit).params
+        rmse_predictions_1_step, rmse_error_1_step = Stats.one_step_predictor(os_model, is_params, train, test, f'{model_name}')
+        return preds[opt_idx[0]], df['RMSE'][opt_idx[0]], aic_predictions_1_step, aic_error_1_step, preds[opt_idx_rmse[0]], df.RMSE.min(), rmse_predictions_1_step, rmse_error_1_step
     
     
     @staticmethod
     def ARIMA_model(data, maxp=3, maxq=3, maxd=1, *args, **kwargs):
+        
+        '''
+        builds ARIMA models
+        '''
+        
         train, test = Stats.train_test_split(data)
         
         def_args_fit = {}
@@ -244,7 +325,7 @@ class Stats():
             try:
                 model_fit = all_models[model].fit(**def_args_fit)
                 aic = model_fit.aic
-                predictions = model_fit.predict(start=len(train), end=len(train)+len(test)-1, dynamic=False)
+                predictions = model_fit.predict(start=len(train), end=len(train)+len(test)-1, dynamic=False, typ='levels')
                 aics.append(aic)
                 models.append(model)
                 preds.append(predictions)
@@ -254,7 +335,6 @@ class Stats():
                 pass
             
         df = pd.DataFrame(zip(models, aics, errors), columns=['ARIMA(p,d,q) Model', 'AIC', 'RMSE'])
-#         print(df)
         
         opt_idx = df[df.AIC==df.AIC.min()].index.tolist()
         print('Optimal model based on AIC is:')
@@ -262,9 +342,15 @@ class Stats():
         plt.plot(test, label='Expected')
         plt.plot(preds[opt_idx[0]], color='red', label='Predicted')
         model_name = df['ARIMA(p,d,q) Model'][opt_idx[0]]
-        plt.title(f'{model_name}; 33-Month Forecast; RMSE = %.3f; AIC = %.3f' % (df['RMSE'][opt_idx[0]], df.AIC.min()))
+        plt.title(f'{model_name}; 24-Month Forecast; RMSE = %.3f; AIC = %.3f' % (df['RMSE'][opt_idx[0]], df.AIC.min()))
         plt.legend(loc='best')
         plt.show()
+        
+        os_model = tsa.arima_model.ARIMA(data, literal_eval(model_name[model_name.find("("):]))
+        is_model = tsa.arima_model.ARIMA(train, literal_eval(model_name[model_name.find("("):]))
+        is_params = is_model.fit(**def_args_fit).params
+        aic_predictions_1_step, aic_error_1_step = Stats.one_step_predictor(os_model, is_params, train, test, f'{model_name}', True)
+        
         print()
         
         opt_idx_rmse = df[df.RMSE==df.RMSE.min()].index.tolist()
@@ -273,9 +359,15 @@ class Stats():
         plt.plot(test, label='Expected')
         plt.plot(preds[opt_idx_rmse[0]], color='red', label='Predicted')
         model_name = df['ARIMA(p,d,q) Model'][opt_idx_rmse[0]]
-        plt.title(f'{model_name}; 33-Month Forecast; RMSE = %.3f; AIC = %.3f' % (df.RMSE.min(), df['AIC'][opt_idx_rmse[0]]))
+        plt.title(f'{model_name}; 24-Month Forecast; RMSE = %.3f; AIC = %.3f' % (df.RMSE.min(), df['AIC'][opt_idx_rmse[0]]))
         plt.legend(loc='best')
         plt.show()
+        
+        os_model = tsa.arima_model.ARIMA(data, literal_eval(model_name[model_name.find("("):]))
+        is_model = tsa.arima_model.ARIMA(train, literal_eval(model_name[model_name.find("("):]))
+        is_params = is_model.fit(**def_args_fit).params
+        rmse_predictions_1_step, rmse_error_1_step = Stats.one_step_predictor(os_model, is_params, train, test, f'{model_name}', True)
+        return preds[opt_idx[0]], df['RMSE'][opt_idx[0]], aic_predictions_1_step, aic_error_1_step, preds[opt_idx_rmse[0]], df.RMSE.min(), rmse_predictions_1_step, rmse_error_1_step
     
     
     @staticmethod
@@ -309,7 +401,7 @@ class Stats():
             try:
                 model_fit = all_models[model].fit()
                 aic = model_fit.aic
-                predictions = model_fit.predict(start=len(train), end=len(train)+len(test)-1, dynamic=False)
+                predictions = model_fit.predict(start=len(train), end=len(train)+len(test)-1, dynamic=False, typ='levels')
                 aics.append(aic)
                 models.append(model)
                 preds.append(predictions)
@@ -319,7 +411,6 @@ class Stats():
                 pass
             
         df = pd.DataFrame(zip(models, aics, errors), columns=['SARIMA(p,d,q)(P,D,Q)[s] Model', 'AIC', 'RMSE'])
-#         print(df)
         
         opt_idx = df[df.AIC==df.AIC.min()].index.tolist()
         print('Optimal model based on AIC is:')
@@ -327,7 +418,7 @@ class Stats():
         plt.plot(test, label='Expected')
         plt.plot(preds[opt_idx[0]], color='red', label='Predicted')
         model_name = df['SARIMA(p,d,q)(P,D,Q)[s] Model'][opt_idx[0]]
-        plt.title(f'{model_name}; 33-Month Forecast; RMSE = %.3f; AIC = %.3f' % (df['RMSE'][opt_idx[0]], df.AIC.min()))
+        plt.title(f'{model_name}; 24-Month Forecast; RMSE = %.3f; AIC = %.3f' % (df['RMSE'][opt_idx[0]], df.AIC.min()))
         plt.legend(loc='best')
         plt.show()
         
@@ -337,7 +428,7 @@ class Stats():
         plt.plot(test, label='Expected')
         plt.plot(preds[opt_idx_rmse[0]], color='red', label='Predicted')
         model_name = df['SARIMA(p,d,q)(P,D,Q)[s] Model'][opt_idx_rmse[0]]
-        plt.title(f'{model_name}; 33-Month Forecast; RMSE = %.3f; AIC = %.3f' % (df.RMSE.min(), df['AIC'][opt_idx_rmse[0]]))
+        plt.title(f'{model_name}; 24-Month Forecast; RMSE = %.3f; AIC = %.3f' % (df.RMSE.min(), df['AIC'][opt_idx_rmse[0]]))
         plt.legend(loc='best')
         plt.show()
 
