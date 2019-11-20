@@ -279,7 +279,7 @@ class Stats():
     
     
     @staticmethod
-    def SARIMA_model(data, maxp=3, maxd=1, maxq=3, maxP=0, maxD=0, maxQ=0, maxs=[3, 6, 9, 12], *args, **kwargs):
+    def SARIMA_model(data, maxp=3, maxd=1, maxq=3, maxP=0, maxD=0, maxQ=0, maxs=[0], *args, **kwargs):
         train, test = Stats.train_test_split(data)
         
         plags = range(maxp+1)
@@ -290,7 +290,7 @@ class Stats():
         Plags = range(maxP+1)
         Dlags = range(maxD+1)
         Qlags = range(maxQ+1)
-        slags = range(maxs+1)
+        slags = maxs
         P_D_Q_s = [(a, b, c, d) for a in Plags for b in Dlags for c in Qlags for d in slags]
         
         combs = [(x, y) for x in p_d_q for y in P_D_Q_s]
